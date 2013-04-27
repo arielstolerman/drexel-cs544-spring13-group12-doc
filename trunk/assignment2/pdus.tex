@@ -7,4 +7,38 @@ This is the message definition section.
 
 \input{pdus_flow}
 
-\input{pdus_pdu}
+\subsection{PDU Definitions}
+\label{sec:pdus:pdu}
+
+RSHC communication includes 3 stages:
+
+\begin{enumerate}
+
+\item {\em Handshake.} Agree on protocol version and conduct authentication.
+
+\item {\em Initialization.} Server sends an {\tt init} message to the client with control information.
+
+\item {\em Normal Protocol Interaction.} Client sends messages at will, and may receive responses from the server. Normally messages begin with a type (1 byte) followed by message-specific data: client queries or actions and server replies or confirmations.
+
+\end{enumerate}
+
+All messages are constructed of a stream of bytes, either of a fixed size based on the message type or a custom size indicated in the message. In the rest of the section, PDU chunks are formatted as: {\tt [$\tuple{title | `value'}$: $\tuple{\#bytes}$]}, for instance: {\tt ['0x02 : 1]}.
+Next, each phase is discussed with a detailed description of the RSHC message PDUs.
+
+\subsubsection{Handshake}
+\label{sec:pdus:pdu:hs}
+
+This is a synchronous phase for determining version and authentication. To initialize the communication, the client pokes the server with the message {\tt ['0x00' : 1]}
+
+In the protocol version phase, the server sends the highest version it controls. The client responds with the decided version, which should not exceed the version supported by the server. Each of these messages consists of 10 bytes of ASCII characters in the format:\\
+{\tt RFB xxx.yyy\textbackslash n}'' where {\tt xxx} and {\tt yyy} are the zero-padded major and minor versions, respectively: \\
+{\tt [`RFB 003.008\textbackslash n': 12 (U8 array)]}
+
+\noindent
+Next, the server lists its supported security types in the format:\\
+{\tt [\#types: 1 (U8)][ security types: \#types (U8 array)]}
+
+\noindent
+If the connection failed (e.g. server does not support requested version), {\tt \#types} will be 0 followed by a failure reason string, and the server will close the connection: \\
+{\tt [reason \#chars: 4 (U32)][reason: \#chars (U8 array)]} \\
+Otherwise the client responds with 1 (U8) byte indicating the selected security type (if any).
