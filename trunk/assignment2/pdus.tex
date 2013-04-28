@@ -6,7 +6,7 @@ This is the message definition section.
 \subsection{Addressing}
 \label{sec:pdus:addr}
 
-The RSHC protocol is designed to operate over any reliable transport that allows non-fixed-size messages, therefore TCP/IP is the natural choice. A port enumeration scheme can be adopted to allow multiple controllers to handle different sets of devices. For instance, one server that provides control over shared rooms in the house (kitchen, dining area, living room etc.) listens to port 7070, another server that is in charge of the master bedroom and its bathroom listens to port 7071 etc.
+The RSHC protocol is designed to operate over any reliable transport that has no boundaries in data stream (i.e. non-fixed-size messages), therefore TCP/IP is the natural choice. A port enumeration scheme can be adopted to allow multiple controllers to handle different sets of devices. For instance, one server that provides control over shared rooms in the house (kitchen, dining area, living room etc.) listens to port 7070, another server that is in charge of the master bedroom and its bathroom listens to port 7071 etc.
 
 We choose the base port 7070 as to the best of our knowledge it is not used by any public application as convention. A connection to a RSHC server will then be to the server's IP address, on the respective port discussed above.
 
