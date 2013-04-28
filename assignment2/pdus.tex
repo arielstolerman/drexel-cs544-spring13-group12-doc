@@ -6,7 +6,9 @@ This is the message definition section.
 \subsection{Addressing}
 \label{sec:pdus:addr}
 
+The RSHC protocol is designed to operate over any reliable transport that allows non-fixed-size messages, therefore TCP/IP is the natural choice. A port enumeration scheme can be adopted to allow multiple controllers to handle different sets of devices. For instance, one server that provides control over shared rooms in the house (kitchen, dining area, living room etc.) listens to port 7070, another server that is in charge of the master bedroom and its bathroom listens to port 7071 etc.
 
+We choose the base port 7070 as to the best of our knowledge it is not used by any public application as convention. A connection to a RSHC server will then be to the server's IP address, on the respective port discussed above.
 
 \subsection{Flow Control}
 \label{sec:pdus:flow}
@@ -90,7 +92,7 @@ The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init
 \hline
 
 {\tt 0x00}  & Light     & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
-            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\   
+            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
             &           &                          & {\tt [0x02:1][level:1]} -- dim (1) \\
 \hline
 {\tt 0x01}  & Shade     & {\tt [0x00:1]} -- up     & {\tt [0x00:1]} -- put down (0) \\
@@ -113,7 +115,7 @@ The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init
 \hline
 \end{tabular}
 \caption{\label{tab:pdus:pdu:init_types}List of supported device types.}
-\end{table} 
+\end{table}
 
 \noindent
 The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x03}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names and current states. The complete {\tt init} message is then structured as follows:
