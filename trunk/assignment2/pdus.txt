@@ -3,12 +3,20 @@ Remote SmartHouse Control (RSHC) Protocol PDUs
 C - client (user), S - server (house controller)
 PDU segment format: [ <title | 'value'> : #bytes]
 
+non-numbered messages:
+- version
+- client challenge response
+
 message codes (1 byte):
 0000 - client poke server to send highest supported version
 0001 - error code, followed by error message
 0002 - server tells client: selected version accepted, followed by challenge
 0003 - server init, sended after a client successful response, encoding the
 	   supported devices and types
+0004 - client action
+0005 - confirm client action
+0006 - server update of non-client-invoked device change
+0007 - server/client shutdown connection message
 
 preset device types, codes (1 byte), states (1 byte) and actions (1 byte):
 0000 - light
@@ -118,20 +126,44 @@ the client knows all devices and their codes
 
 
 
-CLIENT MESSAGES:
-================
+CLIENT/SERVER MESSAGES:
+=======================
 
-we need to decide format of:
-- client queries
-- client actions
-- server responses
+both can send shutdown connection:
 
+C|S > [0x07: 1]
 
+- client actions:
+> change state of device (according to legal actions on device)
+we have a global client action counter COUNT
 
+C > [0x04: 1][COUNT: 1][device code: 1][device number: 1][action: 1+ bytes]
+(COUNT++)
 
+examples:
+"turn on light #3"
+[0x04][0x00][0x02][0x00]
+"set tv #4 volume to 5"
+[0x04][0x03][0x03][0x03][0x05]
 
+- server responses / updates
+> confirm / deny (error)
+> update on non-client-invoked device state change
 
+server response to client action:
+confirm + action number
+S > [0x05: 1][COUNT of confirmed action: 1]
 
+if client command is illegal due to:
+- device code illegal
+- device number illegal
+- action illegal at current state
+- wrong number of parameters to action
 
+S: ['0001' : 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+
+server update on non-client-invoked device state change:
+same format as client action (0x04), only use 0x05 at start.
+S > [0x06: 1][device code: 1][device number: 1][action: 1+]
 
 
