@@ -2,3 +2,13 @@
 \label{sec:security}
 
 This is the security implications section.
+
+\subsection{Security}
+\label{sec:security:sec}
+
+Since RSHC is used to control devices within the users home, security is a critical piece of the protocol.  Authentication is controlled through a challenge-response system.  In RSHC the server sends the client a 16-byte challenge that the user authenticates by encrypting it using DES with a preset 8-character defined user password.  This ensures that only trusted users are granted access.
+
+\subsection{Security Issues}
+\label{sec:security:issues}
+
+By modern standards, DES is considered to be too insecure for many applications.  This is due to the small 56-bit key size.  Since the key size is so small it is vulnerable to a brute-force attack.  In 1999, it was demonstrated that it could cracked in this manner in less than 23 hours.  Additionally, challange-response authentication systems that rely on passwords for authentication can be hacked via a replay attack.  A replay attack is when an adversary simply retransmits a valid data transmission to authenticate themselves in the same way. Being that RSHC could potentially control entry to one's house the encryption algorithm used should be stronger. 
