@@ -1,7 +1,7 @@
 \section{Message Definition -- PDU}
 \label{sec:pdus}
 
-This section discusses the basic definitions of the RSHC protocol. \sect{sec:pdus:addr} discusses the addressing scheme used by RSHC. \sect{sec:pdus:flow} briefly discusses flow control.
+This section discusses the basic definitions of the RSHC protocol. \sect{sec:pdus:addr} discusses the addressing scheme used by RSHC. \sect{sec:pdus:flow} briefly discusses flow control. \sect{sec:pdus:pdu} is the main section, and discusses protocol PDU definitions for the different parts of the protocol, including handshake (\ref{sec:pdus:pdu:hs}), initialization (\ref{sec:pdus:pdu:init}), and normal protocol communication messages (\ref{sec:pdus:pdu:c_to_s}, \ref{sec:pdus:pdu:s_to_c}). Finally we discuss error control in \sect{sec:pdus:err} and QoS in \sect{sec:pdus:qos}.
 
 \subsection{Addressing}
 \label{sec:pdus:addr}
@@ -13,19 +13,14 @@ We choose the base port 7070 as to the best of our knowledge it is not used by a
 \subsection{Flow Control}
 \label{sec:pdus:flow}
 
-Flow control for the RSHC protocol is handled in the underlying TCP/IP layer, including message 
-
-- TALK ABOUT THE UNDERLYING TCP/IP LEVEL IN CHARGE OF THAT.
-
-- TALK ABOUT APP LEVEL FLOW CONTROL (CUMULATIVE CONFIRM) - WHICH WILL NOT BE IMPLEMENTED...
-
+Flow control for the RSHC protocol is handled in the underlying TCP/IP layer, which ensures a reliable message transfer, network traffic moderation and quality of service. However, some factors can be controlled in the RSHC application level: since most of the communication is asynchronous, where the client sends actions to the server, or the server replies with a confirmation or an update, in cases of high traffic an implementation of cumulative messages can be applied. With cumulative messages, several client actions, or several server updates, can be aggregated and sent together to reduce network usage. This idea is only brought here as a suggestion for future extension, and will not be supported in the definitions discussed next.
 
 \subsection{PDU Definitions}
 \label{sec:pdus:pdu}
 
 RSHC communication includes 3 stages:
 
-\begin{enumerate}
+\begin{enumerate}[noitemsep,nolistsep]
 
 \item {\em Handshake.} Agree on protocol version and conduct authentication.
 
@@ -140,27 +135,82 @@ For instance, the following message indicates there are 2 lights -- bedroom ligh
 \end{verbatim}
 
 \noindent
-The server {\tt init} message concludes the synchronous part of the RSHC communication. From this point on, the client sends requests to the server -- queries or actions -- and the server responds accordingly. Next we detail the client and server messages in the normal communication phase of the protocol.
+The server {\tt init} message concludes the synchronous part of the RSHC communication. From this point on, the client sends requests to the server -- actions -- and the server responds accordingly, or the server can invoke updates of state changes not invoked by the client. Next we detail the client and server messages in the normal communication phase of the protocol.
 
 
 \subsubsection{Client to Server Messages}
 \label{sec:pdus:pdu:c_to_s}
 
+After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
+
+The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each of action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). A client message is constructed as follows:
+
+\begin{verbatim}
+C > [0x04: 1][count: 1][device code: 1][device number: 1][action: 1+]
+\end{verbatim}
+
+\noindent
+The message starts with a client-action code byte, {\tt 0x04}, followed by the sequence number (which will then increase by 1), and encoding of the target device and action. The length of the action is determined by which action is selected from the list of approved actions in \tabl{tab:pdus:pdu:init_types}. For instance, the action with sequence number 0x6A ``set tv \#3 volume to 78'' is encoded as follows:
+
+\begin{verbatim}
+C > [0x04][0x6A][0x03][0x02][0x4E]
+\end{verbatim}
+
+\noindent
+In addition to action messages, the client and the server can call a shutdown connection, in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and connection is closed. The termination message is:
+
+\begin{verbatim}
+C|S > [0x07: 1]
+\end{verbatim}
 
 
 \subsubsection{Server to Client Messages}
 \label{sec:pdus:pdu:s_to_c}
 
+The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation of that the action is applied, or an error message, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light).
 
+When an action is received from the client, it is checked for legality. An action is legal if and only if:
+\begin{enumerate}[noitemsep,nolistsep]
+\item The device code is legal
+\item The device number, for the given device code, is legal
+\item The requested action is legal at the current state
+\item The given action parameters conform to the requested action
+\end{enumerate}
+
+It is assumed that after the initialization phase, the client maintains the state of the house, and therefore should have all the information required to determine which actions are legal at any time and which are not. Despite this assumption, the criteria above are checked for any incoming action request. Should an illegal action be received, the server sends an error message with the respective reason:
 
 \begin{verbatim}
-
+S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
 \end{verbatim}
+
+\noindent
+If the incoming action request is legal, the server replies with a confirmation message to the respective action sequence number:
+
+\begin{verbatim}
+S > [0x05: 1][count of confirmed action: 1]
+\end{verbatim}
+
+\noindent
+On non-client-invoked actions performed on the house that derive a state change which is monitored by the remote client, the server updates the action in a message formatted similarly to a client action message, only with a different code and no sequence number. This message is as if the server requests an action from the client, to be applied on the virtual state of the house maintained internally by the client. The update message is constructed as follows:
+
+\begin{verbatim}
+S > [0x06: 1][device code: 1][device number: 1][action: 1+]
+\end{verbatim}
+
+\noindent
+As mentioned in the previous section, the server can also invoke the connection shutdown message.
 
 
 \subsection{Error Control}
 \label{sec:pdus:err}
 
+In the proposed communication messages discussed in the previous section, 3 errors are handled in the protocol:
+\begin{enumerate}[noitemsep,nolistsep]
+\item Connection initialization error sent by the server after a client protocol version selection message. This error message is sent when the version is unsupported by the server.
+\item The client's challenge response in the authentication phase is wrong.
+\item A client action request is illegal.
+\end{enumerate}
 
+The first two error messages are followed by terminating the connection, i.e. no error handling is performed. The third message does not terminate the connection, but simply informs the client that its action request is erroneous in the current state of the house. For the first version of the RSHC protocol, this error handling is sufficient, however it can later on be extended to smarter handling (for instance allow multiple attempts to authenticate).
 
 \input{pdus_qos}
