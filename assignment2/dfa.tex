@@ -5,9 +5,9 @@ An illustration of a DFA for RSHC is shown in \figr{fig:dfa:dfa}. Most of the st
 
 \begin{figure}[h]
   \centering
-  \label{fig:dfa:dfa}
-  \includegraphics[width=5in]{figures/dfa.pdf}
+  \includegraphics[width=4.95in]{figures/dfa.pdf}
   \caption{DFA illustration for the RSHC protocol.}
+  \label{fig:dfa:dfa}
 \end{figure}
 
 We chose to use only two states for the asynchronous phase of the protocol for simplicity. However, we can pair a DFA state to each subset of legal messages, which means a state for every configuration of the house: the states of all monitored devices. This approach would yield a number of states exponential in the number of devices, and a correspondence to the states of the application. Since the two-states model is sufficient for representation, it is chosen for the illustration of the protocol.
