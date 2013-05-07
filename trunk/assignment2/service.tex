@@ -4,7 +4,7 @@
 The Remote SmartHouse Control (RSHC) Protocol serves as a communication mechanism between a client device and server. Built to communicate between a SmartHouse Controller and a remote device, RSHC provides the capability to manipulate devices within the home by interacting with the SmartHouse server, which in turn is responsible for communications with the devices themselves. Though the ability to communicate with household devices is left to the SmartHouse server, RSHC's sole purpose is to translate the actions the client would like to perform to the server so that they may be carried out.
 
 
-To further explain this relationship, provided is Figure \figr{fig:serv_desc:service} which shows the direct location of the protocol in relation to the overall SmartHouse schema.
+To further explain this relationship, provided is \figr{fig:serv_desc:service} which shows the direct location of the protocol in relation to the overall SmartHouse schema.
 
 \begin{figure}[h]
   \centering
@@ -14,3 +14,5 @@ To further explain this relationship, provided is Figure \figr{fig:serv_desc:ser
 \end{figure}
 
 RSHC is independent of a transmission subsystem and requires a reliable ordered data stream channel without fixed size boundaries for transport, for which TCP/IP is the optimum choice for this discussion. An important security feature of RSHC is the use of DES Authentication for the initial authorization of the client device. Although no encryption is provided throughout, the ability to transmit over SSL is a possible option.
+
+The following sections discuss in detail the properties of RSHC, including message definitions, addressing, flow control, security aspects, extensibility and others. 
