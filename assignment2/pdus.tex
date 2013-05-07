@@ -43,7 +43,7 @@ S|C > [`RSHC 0001\n': 10]
 \end{verbatim}
 
 \noindent
-If the connection failed since the server does not support the requested version, it sends an error messages which includes the reason and closes the connection:
+If the connection failed since the server does not support the requested version, it sends an error message which includes the reason and closes the connection:
 
 \begin{verbatim}
 S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
@@ -81,7 +81,7 @@ One of the challenges for RSHC is how to efficiently encode device information. 
 
 In this document we lay out a solution in which several devices are predefined, along with their possible states and operations. These device types are encoded with increasing integers starting at 0. As discussed in \sect{sec:extend}, we leave possible future support in custom messages that can be defined by the house (server) for uncommon devices by simply follow the encoding of known device types and continue the numbering (e.g. for a version that supports 5 known device types, they are encoded as 0--4, and the first custom type will be assigned 5).
 
-The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init_types} details these types, along with their numeric code, state and actions. Actions are followed by the device states in which they are legal (in parenthesis).
+The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init_types} details these types, along with their numeric code, states and actions. Actions are followed by the device states in which they are legal (in parenthesis).
 
 \begin{table}[ht!]
 \centering
@@ -141,9 +141,9 @@ The server {\tt init} message concludes the synchronous part of the RSHC communi
 \subsubsection{Client to Server Messages}
 \label{sec:pdus:pdu:c_to_s}
 
-After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
+After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming to the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
 
-The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each of action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). A client message is constructed as follows:
+The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). A client message is constructed as follows:
 
 \begin{verbatim}
 C > [0x04: 1][count: 1][device code: 1][device number: 1][action: 1+]
@@ -157,7 +157,7 @@ C > [0x04][0x6A][0x03][0x02][0x4E]
 \end{verbatim}
 
 \noindent
-In addition to action messages, the client and the server can call a shutdown connection, in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and connection is closed. The termination message is:
+In addition to action messages, the client and the server can invoke a connection shutdown, in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and the connection is closed. The termination message is:
 
 \begin{verbatim}
 C|S > [0x07: 1]
@@ -167,7 +167,7 @@ C|S > [0x07: 1]
 \subsubsection{Server to Client Messages}
 \label{sec:pdus:pdu:s_to_c}
 
-The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation of that the action is applied, or an error message, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light).
+The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation that the action is applied, or an error message, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light).
 
 When an action is received from the client, it is checked for legality. An action is legal if and only if:
 \begin{enumerate}[noitemsep,nolistsep]
