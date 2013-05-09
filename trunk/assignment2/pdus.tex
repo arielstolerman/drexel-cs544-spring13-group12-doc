@@ -153,7 +153,7 @@ C > [0x04: 1][count: 1][device code: 1][device number: 1][action: 1+]
 The message starts with a client-action code byte, {\tt 0x04}, followed by the sequence number (which will then increase by 1), and encoding of the target device and action. The length of the action is determined by which action is selected from the list of approved actions in \tabl{tab:pdus:pdu:init_types}. For instance, the action with sequence number 0x6A ``set tv \#3 volume to 78'' is encoded as follows:
 
 \begin{verbatim}
-C > [0x04][0x6A][0x03][0x02][0x4E]
+C > [0x04][0x6A][0x03][0x02][0x03][0x4E]
 \end{verbatim}
 
 \noindent
