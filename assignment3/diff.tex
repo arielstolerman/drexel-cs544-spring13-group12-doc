@@ -5,7 +5,9 @@ This section describes the changes applied in this version of the document, comp
 
 \subsection{DFA}
 We applied 2 changes in the DFA:
-\begin{list}
+\begin{enumerate}
 \item Separated the first state (previously: ``IDLE, server listens to connections'') into 2 states, first is ``IDLE'' in which the client does nothing and the server listens to connections, and the second is ``Client awaits version'', where the client is waiting for a version message from the server.
-\item Added explicit error messages for any case an illegal message is received by either the server or the client
-\end{list}
+\item Added explicit error messages in all states (red arrows) for any case an illegal message is received by either the server or the client. At such events, the error message is sent to the other side and the connection is terminated (and the states transitions back to ``IDLE'').
+\end{enumerate}
+
+In addition, since we eliminated the asynchronous behavior in the main communication phase (where now the client {\em must} receive a confirmation / denial from the server before he can invoke another action) and turned it into synchronous, no longer are the client action messages legal at the ``Client awaits confirm / deny'' state. If the client is at that state, it must wait for the client to send a confirmation / denial to go back to the ``Server awaits client action'' state. It follows that, at the ``Server awaits client action'' state, the server cannot send the client any confirmation / denial (since it cannot have a client pending action to process in that state).
