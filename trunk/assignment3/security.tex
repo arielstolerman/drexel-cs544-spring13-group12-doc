@@ -1,0 +1,13 @@
+\section{Security Implications}
+\label{sec:security}
+
+\subsection{Security}
+\label{sec:security:sec}
+
+Since RSHC is used to control devices within the users home, security is a critical piece of the protocol.  Authentication is controlled through a challenge-response system.  In RSHC the server sends the client a 16-byte challenge that the user authenticates by encrypting it using DES with a preset 8-character defined user password.  This ensures that only trusted users are granted access.
+
+\subsection{Security Issues}
+\label{sec:security:issues}
+
+By modern standards, DES is considered to be too insecure for many applications, due to the small 56-bit key size. Although we chose to use DES for the RSHC authentication scheme, which is vulnerable to brute-force attacks or potential reply attacks, under assumptions of closed network operation (e.g. control via devices over the house's local secured network) the authentication is sufficient. However, to allow better security also outside a secured network, better authentication schemes should be supported in future versions. Moreover, using secured socket connection (SSL) can ensure security characteristics including confidentiality, integrity etc. As discussed in the previous section, starting the communication with version agreement ensures that future versions can be extended to support new security types seamlessly without harming backwards compatibility.
+ 

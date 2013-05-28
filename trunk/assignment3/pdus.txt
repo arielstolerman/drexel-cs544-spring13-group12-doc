@@ -1,0 +1,169 @@
+Remote SmartHouse Control (RSHC) Protocol PDUs
+==============================================
+C - client (user), S - server (house controller)
+PDU segment format: [ <title | 'value'> : #bytes]
+
+non-numbered messages:
+- version
+- client challenge response
+
+message codes (1 byte):
+0000 - client poke server to send highest supported version
+0001 - error code, followed by error message
+0002 - server tells client: selected version accepted, followed by challenge
+0003 - server init, sended after a client successful response, encoding the
+	   supported devices and types
+0004 - client action
+0005 - confirm client action
+0006 - server update of non-client-invoked device change
+0007 - server/client shutdown connection message
+
+preset device types, codes (1 byte), states (1 byte) and actions (1 byte):
+0000 - light
+	states:
+	0: off
+	1: on
+	actions (states in which is legal):
+	0: turn on (0)
+	1: turn off (1)
+	2: dim + [level : 1] (1)
+0001 - shade
+	states:
+	0: up
+	1: down
+	actions (states in which is legal):
+	0: put down (0)
+	1: pull up (1)
+	2: dim + [level : 1] (1)
+0002 - AC
+	states:
+	0: off
+	1: on
+	actions (states in which is legal):
+	0: turn on (0)
+	1: turn off (1)
+	2: set-temp + [temp : 1] (1)
+0003 - TV
+	states:
+	0: off
+	1: on
+	actions (states in which is legal):
+	0: turn on (0)
+	1: turn off (1)
+	2: change-channel + [channel : 1] (1)
+	3: change-vol + [vol : 1] (1)
+0004 - alarm
+	states:
+	0: off
+	1: on
+	2: armed
+	actions (states in which is legal):
+	0: turn on (0,2)
+	1: turn off (1,2)
+	2: arm (0,1)
+
+Handshake
+---------
+
+client pokes server to init connection
+C: ['0000' : 1]
+
+server respondes with highest supported version
+S: ['RSHC 0001\n' : 10]
+
+client sends back selected version (that server supports):
+C: ['RSHC 0001\n' : 10]
+
+if server does not support selected version:
+S: ['0001' : 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+- connection closed -
+otherwise, send challenge:
+S: ['0002' : 1][random-challenge : 16]
+
+The client encrypts the challenge with DES, using a password supplied
+by the user as the key. To form the key, the password is truncated
+to eight characters, or padded with null bytes on the right. The
+client then sends the resulting 16-byte response:
+C: [response: 16]
+
+if the response is incorrect, the server notifies with an error message
+and closes the connection:
+S: ['0001' : 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+- connection closed -
+
+otherwise, it sends an 'init' message describing the devices:
+two types of encodings:
+"sparse but informative":
+[0003][3][type1=light][4][names...] ... [type3=AC][1][names...]
+pros:
+- extensible (adding custom device is easier)
+- shorter in cases where many devices are expected to have 0 count
+"full but shorter":
+[0003]   [4][names...][0][names...][0]...[2]...[1]...[0][names...]
+pros:
+- saves encoding of device type to follow and number of device types listed
+- shorter in cases where most standard types are used (few 0 value cells)
+=> hybrid:                 #customs
+[0003]   [4][names...][0]...[0]...[2]...[1][0]   [2]   [6: device desc.][7: device desc.]
+
+The hybrid encoding is:
+['0003' : 1]
+	[n0:= #devices of type 0 : 1][name0 : 10][state0 : 1][name1 : 10][state1 : 1]...[name n0: 10][state n0 : 1]
+	[n1:= #devices of type 1 : 1][name0 : 10][state0 : 1][name1 : 10][state1 : 1]...[name n0: 10][state n1 : 1]
+	...
+	[#devices of type 5 : 1] ...
+	[#custom devices    : 1] ...
+if #custom devices is > 0, each new custom device is assigned the next
+available integer type encoding (in the example above: 6, 7 and so on)
+
+-- at this point we don't support custom devices --
+so the encoding is the one described above for hybrid, but with no extra
+custom message
+
+
+--- here the "connected" state starts ---
+the client knows all devices and their codes
+
+
+
+CLIENT/SERVER MESSAGES:
+=======================
+
+both can send shutdown connection:
+
+C|S > [0x07: 1]
+
+- client actions:
+> change state of device (according to legal actions on device)
+we have a global client action counter COUNT
+
+C > [0x04: 1][COUNT: 1][device code: 1][device number: 1][action: 1+ bytes]
+(COUNT++)
+
+examples:
+"turn on light #3"
+[0x04][0x00][0x02][0x00]
+"set tv #4 volume to 5"
+[0x04][0x03][0x03][0x03][0x05]
+
+- server responses / updates
+> confirm / deny (error)
+> update on non-client-invoked device state change
+
+server response to client action:
+confirm + action number
+S > [0x05: 1][COUNT of confirmed action: 1]
+
+if client command is illegal due to:
+- device code illegal
+- device number illegal
+- action illegal at current state
+- wrong number of parameters to action
+
+S: ['0001' : 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+
+server update on non-client-invoked device state change:
+same format as client action (0x04), only use 0x05 at start.
+S > [0x06: 1][device code: 1][device number: 1][action: 1+]
+
+

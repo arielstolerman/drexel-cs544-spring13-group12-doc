@@ -1,0 +1,11 @@
+\section{Differences in the Second Version of the Document}
+\label{sec:diff}
+
+This section describes the changes applied in this version of the document, compared with the previous version. The changes are motivated by issues we encountered during the implementation process, and applied to achieve a more complete or sound definition of the protocol, and a simpler implementation.
+
+\subsection{DFA}
+We applied 2 changes in the DFA:
+\begin{list}
+\item Separated the first state (previously: ``IDLE, server listens to connections'') into 2 states, first is ``IDLE'' in which the client does nothing and the server listens to connections, and the second is ``Client awaits version'', where the client is waiting for a version message from the server.
+\item Added explicit error messages for any case an illegal message is received by either the server or the client
+\end{list}
