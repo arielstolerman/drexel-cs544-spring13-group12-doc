@@ -1,0 +1,216 @@
+\section{Message Definition -- PDU}
+\label{sec:pdus}
+
+This section discusses the basic definitions of the RSHC protocol. \sect{sec:pdus:addr} discusses the addressing scheme used by RSHC. \sect{sec:pdus:flow} briefly discusses flow control. \sect{sec:pdus:pdu} is the main section, and discusses protocol PDU definitions for the different parts of the protocol, including handshake (\ref{sec:pdus:pdu:hs}), initialization (\ref{sec:pdus:pdu:init}), and normal protocol communication messages (\ref{sec:pdus:pdu:c_to_s}, \ref{sec:pdus:pdu:s_to_c}). Finally we discuss error control in \sect{sec:pdus:err} and QoS in \sect{sec:pdus:qos}.
+
+\subsection{Addressing}
+\label{sec:pdus:addr}
+
+The RSHC protocol is designed to operate over any reliable transport that has no boundaries in data stream (i.e. non-fixed-size messages), therefore TCP/IP is the natural choice. A port enumeration scheme can be adopted to allow multiple controllers to handle different sets of devices. For instance, one server that provides control over shared rooms in the house (kitchen, dining area, living room etc.) listens to port 7070, another server that is in charge of the master bedroom and its bathroom listens to port 7071 etc.
+
+We choose the base port 7070 as to the best of our knowledge it is not used by any public application as convention. A connection to a RSHC server will then be to the server's IP address, on the respective port discussed above.
+
+\subsection{Flow Control}
+\label{sec:pdus:flow}
+
+Flow control for the RSHC protocol is handled in the underlying TCP/IP layer, which ensures a reliable message transfer, network traffic moderation and quality of service. However, some factors can be controlled in the RSHC application level: since most of the communication is asynchronous, where the client sends actions to the server, or the server replies with a confirmation or an update, in cases of high traffic an implementation of cumulative messages can be applied. With cumulative messages, several client actions, or several server updates, can be aggregated and sent together to reduce network usage. This idea is only brought here as a suggestion for future extension, and will not be supported in the definitions discussed next.
+
+\subsection{PDU Definitions}
+\label{sec:pdus:pdu}
+
+RSHC communication includes 3 stages:
+
+\begin{enumerate}[noitemsep,nolistsep]
+
+\item {\em Handshake.} Agree on protocol version and conduct authentication.
+
+\item {\em Initialization.} Server sends an {\tt init} message to the client with control information.
+
+\item {\em Normal Protocol Interaction.} Client sends messages at will, and may receive responses from the server. Normally messages begin with a type (1 byte) followed by message-specific data: client queries or actions and server replies or confirmations.
+
+\end{enumerate}
+
+All messages are constructed of a stream of bytes, either of a fixed size based on the message type or a custom size indicated in the message. In the rest of the section, PDU chunks are formatted as: {\tt [$\tuple{title | value}$:$\tuple{\#bytes}$]}, for instance: {\tt [0x02:1]}. PDUs are preceded by either {\tt S} or {\tt C}, indicating these messages are sent by the server or the client, respectively (or both).
+Next, each phase is discussed with a detailed description of the RSHC message PDUs.
+
+\subsubsection{Handshake}
+\label{sec:pdus:pdu:hs}
+
+This is a synchronous phase for determining version and authentication. To initialize the communication, the client pokes the server with the message {\tt [0x00:1]}. The server then sends the highest version it supports, and the client responds with the decided version, which should not exceed the version supported by the server. Each of these messages consists of 10 bytes of ASCII characters in the format ``{\tt RSHC xxxx\textbackslash n}'' where {\tt xxxx} is the zero-padded version. For instance:
+
+\begin{verbatim}
+S|C > [`RSHC 0001\n': 10]
+\end{verbatim}
+
+\noindent
+If the connection failed since the server does not support the requested version, it sends an error message which includes the reason and closes the connection:
+
+\begin{verbatim}
+S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
+\end{verbatim}
+
+\noindent
+Otherwise, the server sends the client an accept message, followed by a 16-byte challenge for authentication:
+
+\begin{verbatim}
+S > [0x02: 1][random-challenge: 16]
+\end{verbatim}
+
+\noindent
+The client encrypts the challenge using DES with a preset 8-character user-defined password, and sends it in a 16-bytes message back to the server:
+
+\begin{verbatim}
+C > [response: 16]
+\end{verbatim}
+
+\noindent
+If the response is incorrect, the server notifies with an error message and closes the connection:
+\begin{verbatim}
+S > [0x01: 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+\end{verbatim}
+
+\noindent
+Otherwise, the server responds with an {\tt init} message, which encodes the available devices and controls in the house to be driven by the client.
+
+\subsubsection{Initialization}
+\label{sec:pdus:pdu:init}
+
+The initialization phase consists of a single server message, in a continuation of the handshake process. With a single server message, the client is notified about all the device types, numbers and states, which altogether comprise the ``state of the house''. After the client receives the server {\tt init} message, it should have all the information about what devices can be controlled.
+
+One of the challenges for RSHC is how to efficiently encode device information. On one hand, most houses can be assumed to include basic devices that should be available for remote control, like lights, air-conditioning or security alarm; these devices can be encoded efficiently, as common information can be encoded into the protocol (i.e. assumed to be known in advance for both sides). On the other hand, customizable controls for uncommon devices are also desirable, such as the ability to control pool water temperature (under the assumption that smarthouses do not often have swimming pools).
+
+In this document we lay out a solution in which several devices are predefined, along with their possible states and operations. These device types are encoded with increasing integers starting at 0. As discussed in \sect{sec:extend}, we leave possible future support in custom messages that can be defined by the house (server) for uncommon devices by simply follow the encoding of known device types and continue the numbering (e.g. for a version that supports 5 known device types, they are encoded as 0--4, and the first custom type will be assigned 5).
+
+The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init_types} details these types, along with their numeric code, states and actions. Actions are followed by the device states in which they are legal (in parenthesis).
+
+\begin{table}[ht!]
+\centering
+\begin{tabular}{l l l l}
+\hline
+\textbf{Device Code} & \textbf{Type} & \textbf{States} & \textbf{Actions} \\
+\hline
+\hline
+
+{\tt 0x00}  & Light     & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          & {\tt [0x02:1][level:1]} -- dim (1) \\
+\hline
+{\tt 0x01}  & Shade     & {\tt [0x00:1]} -- up     & {\tt [0x00:1]} -- put down (0) \\
+            &           & {\tt [0x01:1]} -- down   & {\tt [0x01:1]} -- pull up (1) \\
+            &           &                          & {\tt [0x02:1][level:1]} -- dim (1) \\
+\hline
+{\tt 0x02}  & AirCon    & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          & {\tt [0x02:1][temp:1]} -- set-temp (1) \\
+\hline
+{\tt 0x03}  & TV        & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          & {\tt [0x02:1][channel:1]} -- set-channel (1) \\
+            &           &                          & {\tt [0x03:1][volume:1]} -- set-volume (1) \\
+\hline
+{\tt 0x04}  & Alarm     & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0,2) \\
+            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1,2) \\
+            &           & {\tt [0x02:1]} -- armed  & {\tt [0x02:1]} -- arm (0,1) \\
+\hline
+\hline
+\end{tabular}
+\caption{\label{tab:pdus:pdu:init_types}List of supported device types.}
+\end{table}
+
+\noindent
+The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x03}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names and current states. The complete {\tt init} message is then structured as follows:
+
+\begin{verbatim}
+[0x03 : 1]
+[n0=#type 0 devices: 1][name0: 16][state0: 1]...[name n0: 16][state n0: 1]
+...
+[n4=#type 1 devices: 1][name0: 16][state0: 1]...[name n4: 16][state n4: 1]
+\end{verbatim}
+
+\noindent
+For instance, the following message indicates there are 2 lights -- bedroom light turned off and kitchen light turned on, no shades, no AC, one TV named 'main TV' turned on, and no security alarm:
+
+\begin{verbatim}
+[0x03][2]['bedroom'][0]['kitchen'][1][0][0][1]['main tv'][1][0]
+\end{verbatim}
+
+\noindent
+The server {\tt init} message concludes the synchronous part of the RSHC communication. From this point on, the client sends requests to the server -- actions -- and the server responds accordingly, or the server can invoke updates of state changes not invoked by the client. Next we detail the client and server messages in the normal communication phase of the protocol.
+
+
+\subsubsection{Client to Server Messages}
+\label{sec:pdus:pdu:c_to_s}
+
+After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming to the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
+
+The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). A client message is constructed as follows:
+
+\begin{verbatim}
+C > [0x04: 1][count: 1][device code: 1][device number: 1][action: 1+]
+\end{verbatim}
+
+\noindent
+The message starts with a client-action code byte, {\tt 0x04}, followed by the sequence number (which will then increase by 1), and encoding of the target device and action. The length of the action is determined by which action is selected from the list of approved actions in \tabl{tab:pdus:pdu:init_types}. For instance, the action with sequence number 0x6A ``set tv \#3 volume to 78'' is encoded as follows:
+
+\begin{verbatim}
+C > [0x04][0x6A][0x03][0x02][0x03][0x4E]
+\end{verbatim}
+
+\noindent
+In addition to action messages, the client and the server can invoke a connection shutdown, in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and the connection is closed. The termination message is:
+
+\begin{verbatim}
+C|S > [0x07: 1]
+\end{verbatim}
+
+
+\subsubsection{Server to Client Messages}
+\label{sec:pdus:pdu:s_to_c}
+
+The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation that the action is applied, or an error message, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light).
+
+When an action is received from the client, it is checked for legality. An action is legal if and only if:
+\begin{enumerate}[noitemsep,nolistsep]
+\item The device code is legal
+\item The device number, for the given device code, is legal
+\item The requested action is legal at the current state
+\item The given action parameters conform to the requested action
+\end{enumerate}
+
+It is assumed that after the initialization phase, the client maintains the state of the house, and therefore should have all the information required to determine which actions are legal at any time and which are not. Despite this assumption, the criteria above are checked for any incoming action request. Should an illegal action be received, the server sends an error message with the respective reason:
+
+\begin{verbatim}
+S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
+\end{verbatim}
+
+\noindent
+If the incoming action request is legal, the server replies with a confirmation message to the respective action sequence number:
+
+\begin{verbatim}
+S > [0x05: 1][count of confirmed action: 1]
+\end{verbatim}
+
+\noindent
+On non-client-invoked actions performed on the house that derive a state change which is monitored by the remote client, the server updates the action in a message formatted similarly to a client action message, only with a different code and no sequence number. This message is as if the server requests an action from the client, to be applied on the virtual state of the house maintained internally by the client. The update message is constructed as follows:
+
+\begin{verbatim}
+S > [0x06: 1][device code: 1][device number: 1][action: 1+]
+\end{verbatim}
+
+\noindent
+As mentioned in the previous section, the server can also invoke the connection shutdown message.
+
+
+\subsection{Error Control}
+\label{sec:pdus:err}
+
+In the proposed communication messages discussed in the previous section, 3 errors are handled in the protocol:
+\begin{enumerate}[noitemsep,nolistsep]
+\item Connection initialization error sent by the server after a client protocol version selection message. This error message is sent when the version is unsupported by the server.
+\item The client's challenge response in the authentication phase is wrong.
+\item A client action request is illegal.
+\end{enumerate}
+
+The first two error messages are followed by terminating the connection, i.e. no error handling is performed. The third message does not terminate the connection, but simply informs the client that its action request is erroneous in the current state of the house. For the first version of the RSHC protocol, this error handling is sufficient, however it can later on be extended to smarter handling (for instance allow multiple attempts to authenticate).
+
+\input{pdus_qos}

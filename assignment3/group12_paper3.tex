@@ -1,0 +1,82 @@
+%%%%%%%%%%%%%%%%
+%%%  config  %%%
+%%%%%%%%%%%%%%%%
+
+\documentclass[12pt]{usenixsubmit}
+\usepackage{setspace}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{color}
+\usepackage{hyperref}
+%\usepackage{appendix}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+%\setstretch{0.9}
+
+\input{config}
+
+%%%%%%%%%%%%%%%%
+%%% document %%%
+%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%% cover %%%
+
+\title{Group 12: The Remote SmartHouse Control (RSHC) Protocol \\ \Large{CS544 Spring 2013, Drexel University}}
+
+\author{
+    Ryan Corcoran \\
+    ryan.m.corcoran@gmail.com
+    \and
+    Amber Heilman \\
+    alh93@drexel.edu
+    \and
+    Michael Mersic \\
+    mpm76@drexel.edu
+    \and
+    Ariel Stolerman \\
+    ams573@cs.drexel.edu
+}
+\date{\today}
+
+\maketitle
+
+\thispagestyle{empty}
+
+\input{abstract}
+
+\tableofcontents
+\pagebreak
+
+\setcounter{page}{1}
+
+%%% content %%%
+
+\input{service}
+
+\input{pdus}
+
+\input{dfa}
+
+\input{extensibility}
+
+\input{security}
+
+%%% references %%%
+
+%\setstretch{0.8}
+%\bibliographystyle{IEEEtran}
+%\bibliography{references}
+
+%%% appendicies %%%
+
+%\clearpage
+
+%\input{appendicies}
+
+\end{document}
