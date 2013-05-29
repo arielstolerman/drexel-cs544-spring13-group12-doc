@@ -13,7 +13,7 @@ We choose the base port 7070 as to the best of our knowledge it is not used by a
 \subsection{Flow Control}
 \label{sec:pdus:flow}
 
-Flow control for the RSHC protocol is handled in the underlying TCP/IP layer, which ensures a reliable message transfer, network traffic moderation and quality of service. However, some factors can be controlled in the RSHC application level: since most of the communication is asynchronous, where the client sends actions to the server, or the server replies with a confirmation or an update, in cases of high traffic an implementation of cumulative messages can be applied. With cumulative messages, several client actions, or several server updates, can be aggregated and sent together to reduce network usage. This idea is only brought here as a suggestion for future extension, and will not be supported in the definitions discussed next.
+Flow control for the RSHC protocol is handled in the underlying TCP/IP layer, which ensures a reliable message transfer, network traffic moderation and quality of service. However, some factors can be controlled in the RSHC application level: since most of the communication is action-response, where the client sends an action to the server, and the server replies with a confirmation or an action denial (or sends a non-client invoked update), in cases of high traffic an implementation of cumulative messages can be applied. With cumulative messages, several client actions, or several server confirmations / updates, can be aggregated and sent together to reduce network usage. This idea is only brought here as a suggestion for future extension, and will not be supported in the definitions discussed next.
 
 \subsection{PDU Definitions}
 \label{sec:pdus:pdu}
@@ -26,12 +26,34 @@ RSHC communication includes 3 stages:
 
 \item {\em Initialization.} Server sends an {\tt init} message to the client with control information.
 
-\item {\em Normal Protocol Interaction.} Client sends messages at will, and may receive responses from the server. Normally messages begin with a type (1 byte) followed by message-specific data: client queries or actions and server replies or confirmations.
+\item {\em Normal Protocol Interaction.} Client sends action messages at will, and receives responses from the server. All messages begin with a type (1 byte) followed by message-specific data: client queries or actions and server replies or confirmations.
 
 \end{enumerate}
 
-All messages are constructed of a stream of bytes, either of a fixed size based on the message type or a custom size indicated in the message. In the rest of the section, PDU chunks are formatted as: {\tt [$\tuple{title | value}$:$\tuple{\#bytes}$]}, for instance: {\tt [0x02:1]}. PDUs are preceded by either {\tt S} or {\tt C}, indicating these messages are sent by the server or the client, respectively (or both).
+All messages are constructed of a stream of bytes, either of a fixed size based on the message type or a custom size indicated in the message (which messages are of fixed size and which are of varying size is detailed in the rest of the section). Throughout this document, PDU chunks are formatted as: {\tt [$\tuple{title | value}$:$\tuple{\#bytes}$]}, for instance: {\tt [0x02:1]}. PDUs are preceded by either {\tt S} or {\tt C}, indicating these messages are sent by the server or the client, respectively (or both).
 Next, each phase is discussed with a detailed description of the RSHC message PDUs.
+
+\subsubsection{Implementation Notes}
+\label{sec:pdus:pdu:impl}
+
+As will be mentioned in \sect{sec:diff}, originally we aimed to have messages passed as a stream of bytes. Since all messages begin with a type, we immediately know whether it is a message of a fixed length (like type 1, which indicates a version message, that always contains {\em exactly} 12 characters) or a message of a varying length, for which a known position in the message itself should indicate the length of the message (like type 2, error messages where their second byte indicates the length of the following). This approach is designed to well defining message delineation, without using a specific delimiter that indicates the end of the message (as we read bytes, we know how much to expect and keep reading until we cut and look at the buffer thus far as a message).
+
+During the implementation, we found it much simpler to use a Java-provided buffered reader, that simply reads newline-delimited strings from an input stream. Using this method of message reading simplified the implementation by a lot, since it saved us the effort of having to maintain a buffer, and read byte after byte, calculate the amount of bytes left in the current message from what is read thus far, and cut the messages at the right point.
+
+It is trivial to see that using bytes is more efficient than strings, e.g. sending the byte 0x00 (8 bits) is shorter than the string representing the number 0x00, ``00'', which is 32 bits (and can be even larger, depending on the character encoding). Therefore, in order to support future, more efficient implementations that do not use a simple newline-delimited string reader, but really use streams of bytes, we kept the byte structure of the messages, and converted it to string at the very end before sending it, and back from string to bytes at the very beginning after receiving it on the other end. The following example illustrates how a message is passed, assuming each character is 2-byte long:
+
+\begin{verbatim}
+> sender wants to send a message [0x00]      // 1 byte
+> message is converted to the string "00\n"  // 6 bytes (3 chars)
+-- message is passed to the other end --
+> message is received as a string "00" (reader throws the "\n") // 4 bytes
+> message is converted back to the byte stream [0x00]           // 1 byte
+\end{verbatim}
+
+It immediately follows that having non-fixed-size messages include a byte that indicates the total size of the message is redundant - since messages are now newline-delimited. However, to support future byte-based implementations, and as a secondary length check mechanism, we chose to keep these message-length indicators.
+
+In the rest of the document, we treat messages as streams of bytes, and any potential implementation based on this document should follow this spec. Our implementation, however, takes a shortcut by disguising the byte streams as newline-delimited strings, which is used only for simplicity purposes.
+
 
 \subsubsection{Handshake}
 \label{sec:pdus:pdu:hs}

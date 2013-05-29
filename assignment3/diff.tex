@@ -3,6 +3,19 @@
 
 This section describes the changes applied in this version of the document, compared with the previous version. The changes are motivated by issues we encountered during the implementation process, and applied to achieve a more complete or sound definition of the protocol, and a simpler implementation.
 
+\subsection{PDU Definitions}
+In the second version of the protocol we applied several important changes to the PDUs:
+\begin{enumerate}
+\item {\em All} messages begin with a unique byte that indicates the message type, for instance 0 for a poke message, 1 for a version message, 2 for error etc. In the previous version, most messages had a type, except the version message and the client challenge response message. Back then, the choice was motivated by what is used by a real-world protocol (RFB), however we added a type for {\em all} messages in order to:
+    \begin{enumerate}
+        \item Have a consistent message format
+        \item Be able to easily assert whether any given message at any given state is legal at that state or not
+    \end{enumerate}
+\item In the previous version, after the connection is initialized and the client can send actions to the server and receive confirmations, we allowed the client to send more actions, as it awaits confirmation for older actions he sent. This defined an asynchronous behavior, which we wanted to eliminate.
+    Therefore, now the client is allowed to send only {\em one} action and must wait for the server to confirm / deny that action. It follows that the server can have at most {\em one} pending action to confirm / deny for any active client at any given time.
+\item As detailed in \sect{sec:pdus:pdu:impl}, our implementation disguises the byte-stream messages defined in the PDU section as newline-delimited strings. The PDU section still addresses messages as streams of bytes, and only the implementation uses this shortcut to simplify the code (we simply use Java buffered readers to read complete messages instead of reading byte after byte). The spec in this document is kept as in the original, addressing messages as streams of bytes, since it is the more efficient way, and anyone who wishes to supply a real efficient implementation of our protocol should not take the shortcut we did and follow the spec.
+\end{enumerate}
+
 \subsection{DFA}
 We applied 2 changes in the DFA:
 \begin{enumerate}

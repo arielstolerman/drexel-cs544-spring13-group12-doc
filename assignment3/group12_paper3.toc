@@ -3,16 +3,18 @@
 \contentsline {subsection}{\numberline {2.1}Addressing}{1}{subsection.2.1}
 \contentsline {subsection}{\numberline {2.2}Flow Control}{2}{subsection.2.2}
 \contentsline {subsection}{\numberline {2.3}PDU Definitions}{2}{subsection.2.3}
-\contentsline {subsubsection}{\numberline {2.3.1}Handshake}{2}{subsubsection.2.3.1}
-\contentsline {subsubsection}{\numberline {2.3.2}Initialization}{3}{subsubsection.2.3.2}
-\contentsline {subsubsection}{\numberline {2.3.3}Client to Server Messages}{4}{subsubsection.2.3.3}
-\contentsline {subsubsection}{\numberline {2.3.4}Server to Client Messages}{5}{subsubsection.2.3.4}
-\contentsline {subsection}{\numberline {2.4}Error Control}{5}{subsection.2.4}
+\contentsline {subsubsection}{\numberline {2.3.1}Implementation Notes}{2}{subsubsection.2.3.1}
+\contentsline {subsubsection}{\numberline {2.3.2}Handshake}{3}{subsubsection.2.3.2}
+\contentsline {subsubsection}{\numberline {2.3.3}Initialization}{4}{subsubsection.2.3.3}
+\contentsline {subsubsection}{\numberline {2.3.4}Client to Server Messages}{5}{subsubsection.2.3.4}
+\contentsline {subsubsection}{\numberline {2.3.5}Server to Client Messages}{5}{subsubsection.2.3.5}
+\contentsline {subsection}{\numberline {2.4}Error Control}{6}{subsection.2.4}
 \contentsline {subsection}{\numberline {2.5}Quality of Service}{6}{subsection.2.5}
-\contentsline {section}{\numberline {3}DFA}{6}{section.3}
-\contentsline {section}{\numberline {4}Extensibility}{6}{section.4}
-\contentsline {section}{\numberline {5}Security Implications}{7}{section.5}
-\contentsline {subsection}{\numberline {5.1}Security}{7}{subsection.5.1}
-\contentsline {subsection}{\numberline {5.2}Security Issues}{7}{subsection.5.2}
-\contentsline {section}{\numberline {6}Differences in the Second Version of the Document}{7}{section.6}
-\contentsline {subsection}{\numberline {6.1}DFA}{7}{subsection.6.1}
+\contentsline {section}{\numberline {3}DFA}{7}{section.3}
+\contentsline {section}{\numberline {4}Extensibility}{7}{section.4}
+\contentsline {section}{\numberline {5}Security Implications}{8}{section.5}
+\contentsline {subsection}{\numberline {5.1}Security}{8}{subsection.5.1}
+\contentsline {subsection}{\numberline {5.2}Security Issues}{8}{subsection.5.2}
+\contentsline {section}{\numberline {6}Differences in the Second Version of the Document}{8}{section.6}
+\contentsline {subsection}{\numberline {6.1}PDU Definitions}{8}{subsection.6.1}
+\contentsline {subsection}{\numberline {6.2}DFA}{9}{subsection.6.2}
