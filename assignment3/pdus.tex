@@ -120,7 +120,7 @@ S > [0x03: 1][random-challenge: 16]
 The client encrypts the challenge using DES with a preset 8-character user-defined password, which is encoded into a 16-byte response. He then sends it back to the server, preceded by the his username followed by a semicolon (the semicolon indicates that from this point on the message has 16 bytes left to read -- the response itself; the username is not allowed to contain semicolons):
 
 \begin{verbatim}
-C > [0x04: 1][username: ? bytes][`;': 2][response: 16]
+C > [0x04: 1][username: ?][`;': 2][response: 16]
 \end{verbatim}
 
 \noindent
@@ -178,7 +178,7 @@ The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init
 \end{table}
 
 \noindent
-The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x03}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names, current states and parameter values (if any). The number of parameters is determined by the device type, for instance light will have one (dim level), TV will have two (channel and volume), alarm will have none etc. The complete {\tt init} message is then structured as follows:
+The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x05}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names, current states and parameter values (if any). The number of parameters is determined by the device type, for instance light will have one (dim level), TV will have two (channel and volume), alarm will have none etc. The complete {\tt init} message is then structured as follows:
 
 \begin{verbatim}
 [0x05: 1]
@@ -270,7 +270,7 @@ C|S > [0x09: 1]
 \end{verbatim}
 
 \noindent
-The second type of message, is an error message with a common message content -- whenever an illegal message is received from the other end (where illegal means unexpected message at the current state of the protocol). For instance, if a client receives a challenge when it in fact expects a server version, this error is invoked; or when the server receives an action when it awaits a challenge response, this error will also be invoked. The error message in the same format as described before:
+The second type of message, is an error message with a common message content -- whenever an illegal message is received from the other end (where illegal means unexpected message at the current state of the protocol). For instance, if a client receives a challenge when it expects a server version, this error is invoked; or when the server receives an action when it awaits a challenge response, this error will also be invoked. The error message is in the same format as described before:
 
 \begin{verbatim}
 C|S > [0x02: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
