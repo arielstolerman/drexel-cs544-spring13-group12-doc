@@ -117,7 +117,7 @@ S > [0x03: 1][random-challenge: 16]
 \end{verbatim}
 
 \noindent
-The client encrypts the challenge using DES with a preset 8-character user-defined password, which is encoded into a 16-byte response. He then sends it back to the server, preceded by the his username followed by a semicolon (the semicolon indicates that from this point on the message has 16 bytes left to read -- the response itself; the username is not allowed to contain semicolons):
+The client encrypts the challenge using DES with a preset 8-character user-defined password (details about how user/password pairs are generated in \sect{sec:security}), which is encoded into a 16-byte response. He then sends it back to the server, preceded by the his username followed by a semicolon (the semicolon indicates that from this point on the message has 16 bytes left to read -- the response itself; the username is not allowed to contain semicolons):
 
 \begin{verbatim}
 C > [0x04: 1][username: ?][`;': 2][response: 16]
@@ -287,9 +287,14 @@ In the proposed communication messages discussed in the previous section, 3 erro
 \begin{enumerate}[noitemsep,nolistsep]
 \item Connection initialization error sent by the server after a client protocol version selection message. This error message is sent when the version is unsupported by the server.
 \item The client's challenge response in the authentication phase is wrong.
-\item A client action request is illegal.
+\item A message is illegal at the current state of the communication.
 \end{enumerate}
 
-The first two error messages are followed by terminating the connection, i.e. no error handling is performed. The third message does not terminate the connection, but simply informs the client that its action request is erroneous in the current state of the house. For the first version of the RSHC protocol, this error handling is sufficient, however it can later on be extended to smarter handling (for instance allow multiple attempts to authenticate).
+All the error messages above are followed by terminating the connection. This zero-tolerance approach is adopted for security purposes, in order to make it difficult for an attacker to apply fuzz attacks on the server, and to ensure no action will accidentally be performed that transition the house or the protocol to an invalid state. For instance, an illegal message before the initialization phase may cause the server to apply an action on a device that does not exist, or a device in a state that should not allow the applied action (e.g. dim a light that is currently off).
+Later versions of the protocol may extend error handling to be smarter / more forgiving (e.g. allow multiple attempts to authenticate).
 
-\input{pdus_qos}
+
+\subsection{Quality of Service}
+\label{sec:pdus:qos}
+
+The RSHCP protocol provides several services to the client to ensure that quality is present through its use. This particular protocol provides a simplicity warranted for future extensibility and version control, allowing backwards compatibility as well. Even further, the use of an authentication mechanism to ensure security of the client connecting to the server during operations is implemented in the initiation stage. Another feature of the protocol sustains the client knowledge of all household device status changes to provide the client with the most current blueprint of the house. These services are defined in detail elsewhere, but are the pillar of service quality in which RSHC is determined to provide.
