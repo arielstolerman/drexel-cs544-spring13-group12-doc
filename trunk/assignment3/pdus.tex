@@ -31,7 +31,34 @@ RSHC communication includes 3 stages:
 \end{enumerate}
 
 All messages are constructed of a stream of bytes, either of a fixed size based on the message type or a custom size indicated in the message (which messages are of fixed size and which are of varying size is detailed in the rest of the section). Throughout this document, PDU chunks are formatted as: {\tt [$\tuple{title | value}$:$\tuple{\#bytes}$]}, for instance: {\tt [0x02:1]}. PDUs are preceded by either {\tt S} or {\tt C}, indicating these messages are sent by the server or the client, respectively (or both).
-Next, each phase is discussed with a detailed description of the RSHC message PDUs.
+All message-type byte-codes, which are always the first byte of any message, are detailed in \tabl{tab:pdus:mt}. Next, each phase is discussed with a detailed description of the RSHC message PDUs.
+
+\begin{table}[ht!]
+\centering
+\begin{tabular}{l l l}
+\hline
+\textbf{Message Bytecode} & \textbf{Message Type} & \textbf{Sent by} \\
+\hline
+\hline
+
+{\tt 0x00}  & Poke      & Client \\
+{\tt 0x01}  & Version   & Server / Client \\
+{\tt 0x02}  & Error     & Server / Client \\
+{\tt 0x03}  & Challenge & Server \\
+{\tt 0x04}  & Response  & Client \\
+{\tt 0x05}  & Init      & Server \\
+{\tt 0x06}  & Action    & Client \\
+{\tt 0x07}  & Confirm   & Server \\
+{\tt 0x08}  & Update    & Server \\
+{\tt 0x09}  & Shutdown  & Server / Client \\
+
+\hline
+\hline
+\end{tabular}
+\caption{\label{tab:pdus:mt}List of all message-type byte codes.}
+\end{table}
+
+
 
 \subsubsection{Implementation Notes}
 \label{sec:pdus:pdu:impl}
@@ -54,45 +81,56 @@ It immediately follows that having non-fixed-size messages include a byte that i
 
 In the rest of the document, we treat messages as streams of bytes, and any potential implementation based on this document should follow this spec. Our implementation, however, takes a shortcut by disguising the byte streams as newline-delimited strings, which is used only for simplicity purposes.
 
-
 \subsubsection{Handshake}
 \label{sec:pdus:pdu:hs}
 
-This is a synchronous phase for determining version and authentication. To initialize the communication, the client pokes the server with the message {\tt [0x00:1]}. The server then sends the highest version it supports, and the client responds with the decided version, which should not exceed the version supported by the server. Each of these messages consists of 10 bytes of ASCII characters in the format ``{\tt RSHC xxxx\textbackslash n}'' where {\tt xxxx} is the zero-padded version. For instance:
+This phase is designated for determining version and apply user authentication. To initialize the communication, the client pokes the server with the {\em poke} message:
 
 \begin{verbatim}
-S|C > [`RSHC 0001\n': 10]
+C > [0x00: 1]
+\end{verbatim}
+
+The server then sends the highest version it supports. The version message consists of exactly one message-type byte plus 9 ASCII characters (18 bytes) in the format ``{\tt RSHC xxxx}'' where {\tt xxxx} is the zero-padded version. Example for RSHC v1:
+
+\begin{verbatim}
+S > [0x01: 1][`RSHC 0001': 18]
+\end{verbatim}
+
+The client responds with the decided version, which should not exceed the version supported by the server. The client version selection message is in the same format at the server's version message:
+
+\begin{verbatim}
+C > [0x01: 1][`RSHC 0001': 18]
 \end{verbatim}
 
 \noindent
 If the connection failed since the server does not support the requested version, it sends an error message which includes the reason and closes the connection:
 
 \begin{verbatim}
-S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
+S > [0x02: 1][#err-msg-chars: 1][err-msg: #err-msg-chars (twice as many bytes)]
 \end{verbatim}
 
 \noindent
-Otherwise, the server sends the client an accept message, followed by a 16-byte challenge for authentication:
+Otherwise, the server sends the client an authentication challenge message, which includes a 16-byte challenge:
 
 \begin{verbatim}
-S > [0x02: 1][random-challenge: 16]
+S > [0x03: 1][random-challenge: 16]
 \end{verbatim}
 
 \noindent
-The client encrypts the challenge using DES with a preset 8-character user-defined password, and sends it in a 16-bytes message back to the server:
+The client encrypts the challenge using DES with a preset 8-character user-defined password, which is encoded into a 16-byte response. He then sends it back to the server, preceded by the his username followed by a semicolon (the semicolon indicates that from this point on the message has 16 bytes left to read -- the response itself; the username is not allowed to contain semicolons):
 
 \begin{verbatim}
-C > [response: 16]
+C > [0x04: 1][username: ? bytes][`;': 2][response: 16]
 \end{verbatim}
 
 \noindent
 If the response is incorrect, the server notifies with an error message and closes the connection:
 \begin{verbatim}
-S > [0x01: 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
+S > [0x02: 1][#err-msg-chars: 1][err-msg : #err-msg-chars]
 \end{verbatim}
 
 \noindent
-Otherwise, the server responds with an {\tt init} message, which encodes the available devices and controls in the house to be driven by the client.
+Otherwise, the server responds with an {\tt init} message, which encodes the available devices and controls in the house to be driven by the client. The format of the {\tt init} message is detailed next.
 
 \subsubsection{Initialization}
 \label{sec:pdus:pdu:init}
@@ -103,36 +141,36 @@ One of the challenges for RSHC is how to efficiently encode device information. 
 
 In this document we lay out a solution in which several devices are predefined, along with their possible states and operations. These device types are encoded with increasing integers starting at 0. As discussed in \sect{sec:extend}, we leave possible future support in custom messages that can be defined by the house (server) for uncommon devices by simply follow the encoding of known device types and continue the numbering (e.g. for a version that supports 5 known device types, they are encoded as 0--4, and the first custom type will be assigned 5).
 
-The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init_types} details these types, along with their numeric code, states and actions. Actions are followed by the device states in which they are legal (in parenthesis).
+The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init_types} details these types, along with their numeric code, states, parameters and actions. Actions are followed by the device states in which they are legal (in parenthesis).
 
 \begin{table}[ht!]
 \centering
-\begin{tabular}{l l l l}
+\begin{tabular}{l l l l l}
 \hline
-\textbf{Device Code} & \textbf{Type} & \textbf{States} & \textbf{Actions} \\
+\textbf{Device Code} & \textbf{Type} & \textbf{States} & \textbf{Parameters} & \textbf{Actions} \\
 \hline
 \hline
 
-{\tt 0x00}  & Light     & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
-            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
-            &           &                          & {\tt [0x02:1][level:1]} -- dim (1) \\
+{\tt 0x00}  & Light     & {\tt [0x00:1]} -- off    & dim    & {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     &        & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          &        & {\tt [0x02:1][level:1]} -- dim (1) \\
 \hline
-{\tt 0x01}  & Shade     & {\tt [0x00:1]} -- up     & {\tt [0x00:1]} -- put down (0) \\
-            &           & {\tt [0x01:1]} -- down   & {\tt [0x01:1]} -- pull up (1) \\
-            &           &                          & {\tt [0x02:1][level:1]} -- dim (1) \\
+{\tt 0x01}  & Shade     & {\tt [0x00:1]} -- up     & dim    & {\tt [0x00:1]} -- put down (0) \\
+            &           & {\tt [0x01:1]} -- down   &        & {\tt [0x01:1]} -- pull up (1) \\
+            &           &                          &        & {\tt [0x02:1][level:1]} -- dim (1) \\
 \hline
-{\tt 0x02}  & AirCon    & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
-            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
-            &           &                          & {\tt [0x02:1][temp:1]} -- set-temp (1) \\
+{\tt 0x02}  & AirCon    & {\tt [0x00:1]} -- off    & temp   & {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     &        & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          &        & {\tt [0x02:1][temp:1]} -- set-temp (1) \\
 \hline
-{\tt 0x03}  & TV        & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0) \\
-            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1) \\
-            &           &                          & {\tt [0x02:1][channel:1]} -- set-channel (1) \\
-            &           &                          & {\tt [0x03:1][volume:1]} -- set-volume (1) \\
+{\tt 0x03}  & TV        & {\tt [0x00:1]} -- off    & channel& {\tt [0x00:1]} -- turn on (0) \\
+            &           & {\tt [0x01:1]} -- on     & volume & {\tt [0x01:1]} -- turn off (1) \\
+            &           &                          &        & {\tt [0x02:1][channel:1]} -- set-channel (1) \\
+            &           &                          &        & {\tt [0x03:1][volume:1]} -- set-volume (1) \\
 \hline
-{\tt 0x04}  & Alarm     & {\tt [0x00:1]} -- off    & {\tt [0x00:1]} -- turn on (0,2) \\
-            &           & {\tt [0x01:1]} -- on     & {\tt [0x01:1]} -- turn off (1,2) \\
-            &           & {\tt [0x02:1]} -- armed  & {\tt [0x02:1]} -- arm (0,1) \\
+{\tt 0x04}  & Alarm     & {\tt [0x00:1]} -- off    & (none) & {\tt [0x00:1]} -- turn on (0,2) \\
+            &           & {\tt [0x01:1]} -- on     &        & {\tt [0x01:1]} -- turn off (1,2) \\
+            &           & {\tt [0x02:1]} -- armed  &        & {\tt [0x02:1]} -- arm (0,1) \\
 \hline
 \hline
 \end{tabular}
@@ -140,24 +178,31 @@ The first version of RSHC supports 5 known device types. \tabl{tab:pdus:pdu:init
 \end{table}
 
 \noindent
-The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x03}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names and current states. The complete {\tt init} message is then structured as follows:
+The server {\tt init} message is then constructed starting with the {\tt init} message type {\tt 0x03}, followed by the list of known device types in order (i.e. first lights, then shades etc.) Each device type starts with a byte indicating the number of such devices, followed by their 16-byte names, current states and parameter values (if any). The number of parameters is determined by the device type, for instance light will have one (dim level), TV will have two (channel and volume), alarm will have none etc. The complete {\tt init} message is then structured as follows:
 
 \begin{verbatim}
-[0x03 : 1]
-[n0=#type 0 devices: 1][name0: 16][state0: 1]...[name n0: 16][state n0: 1]
-...
-[n4=#type 1 devices: 1][name0: 16][state0: 1]...[name n4: 16][state n4: 1]
+[0x05: 1]
+[n0=#lights: 1][name0: 16][state0: 1][params0: 1]...
+    ...[name n0: 16][state n0: 1][params n0: 1]
+[n1=#shades: 1][name0: 16][state0: 1][params0: 1]...
+    ...[name n0: 16][state n0: 1][params n0: 1]
+[n2=#aircons: 1][name0: 16][state0: 1][params0: 1]...
+    ...[name n2: 16][state n2: 1][params n2: 1]
+[n3=#TVs: 1][name0: 16][state0: 1][params0: 2]...
+    ...[name n3: 16][state n3: 1][params n3: 2]
+[n4=#type 4 devices: 1][name0: 16][state0: 1]...
+    ...[name n4: 16][state n4: 1]
 \end{verbatim}
 
 \noindent
-For instance, the following message indicates there are 2 lights -- bedroom light turned off and kitchen light turned on, no shades, no AC, one TV named 'main TV' turned on, and no security alarm:
+For instance, the following message indicates there are 2 lights -- bedroom light turned off and kitchen light turned on (both dim levels set to 5), no shades, no AC, one TV named 'main TV' turned on channel 18 at volume 7, and no security alarm:
 
 \begin{verbatim}
-[0x03][2]['bedroom'][0]['kitchen'][1][0][0][1]['main tv'][1][0]
+[0x05][2]['bedroom'][0][5]['kitchen'][1][5][0][0][1]['main tv'][1][18][7][0]
 \end{verbatim}
 
 \noindent
-The server {\tt init} message concludes the synchronous part of the RSHC communication. From this point on, the client sends requests to the server -- actions -- and the server responds accordingly, or the server can invoke updates of state changes not invoked by the client. Next we detail the client and server messages in the normal communication phase of the protocol.
+The server {\tt init} message concludes the handshake part of the RSHC communication. From this point on, the client sends requests to the server -- actions -- and the server responds accordingly, or the server can invoke updates of state changes not invoked by the client (i.e. invoked by other clients connected to the house, or simply people at the house). Next we detail the client and server messages in the normal communication phase of the protocol.
 
 
 \subsubsection{Client to Server Messages}
@@ -165,31 +210,24 @@ The server {\tt init} message concludes the synchronous part of the RSHC communi
 
 After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming to the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
 
-The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). A client message is constructed as follows:
+The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). In fact, since the client is allowed to send only one action at a time, and must wait for a server confirmation / denial before the next action is sent, sequence number collision is not possible. However, we adopt the sequence number scheme for good practice, and to support future versions that may allow multiple actions before any confirmation is received back from the server. A client message is constructed as follows:
 
 \begin{verbatim}
-C > [0x04: 1][count: 1][device code: 1][device number: 1][action: 1+]
+C > [0x06: 1][count: 1][device code: 1][device number: 1][action: 1+]
 \end{verbatim}
 
 \noindent
-The message starts with a client-action code byte, {\tt 0x04}, followed by the sequence number (which will then increase by 1), and encoding of the target device and action. The length of the action is determined by which action is selected from the list of approved actions in \tabl{tab:pdus:pdu:init_types}. For instance, the action with sequence number 0x6A ``set tv \#3 volume to 78'' is encoded as follows:
+The message starts with a client-action code byte, {\tt 0x06}, followed by the sequence number (which will then increase by 1), and encoding of the target device and action. The length of the action is determined by which action is selected from the list of approved actions in \tabl{tab:pdus:pdu:init_types}. For instance, the action with sequence number 0x6A ``set tv \#3 volume to 78'' is encoded as follows:
 
 \begin{verbatim}
-C > [0x04][0x6A][0x03][0x02][0x03][0x4E]
-\end{verbatim}
-
-\noindent
-In addition to action messages, the client and the server can invoke a connection shutdown, in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and the connection is closed. The termination message is:
-
-\begin{verbatim}
-C|S > [0x07: 1]
+C > [0x06][0x6A][0x03][0x02][0x03][0x4E]
 \end{verbatim}
 
 
 \subsubsection{Server to Client Messages}
 \label{sec:pdus:pdu:s_to_c}
 
-The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation that the action is applied, or an error message, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light).
+The server can update the client in two cases: 1) the client sent an action request, and the server updates with a confirmation that the action is applied / denied, and 2) update on a non-client-invoked device state change (for instance, someone in the house turned on some light, or another connected client applied some action).
 
 When an action is received from the client, it is checked for legality. An action is legal if and only if:
 \begin{enumerate}[noitemsep,nolistsep]
@@ -199,28 +237,47 @@ When an action is received from the client, it is checked for legality. An actio
 \item The given action parameters conform to the requested action
 \end{enumerate}
 
-It is assumed that after the initialization phase, the client maintains the state of the house, and therefore should have all the information required to determine which actions are legal at any time and which are not. Despite this assumption, the criteria above are checked for any incoming action request. Should an illegal action be received, the server sends an error message with the respective reason:
+It is assumed that after the initialization phase, the client maintains the state of the house, and therefore should have all the information required to determine which actions are legal at any time and which are not. Despite this assumption, the criteria above are checked for any incoming action request.
+Should an illegal action be received (i.e. an action message that does not conform to the current state of the house), the server sends a denial message with the given action sequence number:
 
 \begin{verbatim}
-S > [0x01: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
+S > [0x07: 1][count of confirmed action: 1][0x00: 1]
 \end{verbatim}
 
 \noindent
-If the incoming action request is legal, the server replies with a confirmation message to the respective action sequence number:
+If the incoming action request is legal, the server replies with a confirmation message with the respective action sequence number. This message is identical to the denial message, only ends with ``1'' instead of ``0'':
 
 \begin{verbatim}
-S > [0x05: 1][count of confirmed action: 1]
+S > [0x07: 1][count of confirmed action: 1][0x01: 1]
 \end{verbatim}
 
 \noindent
 On non-client-invoked actions performed on the house that derive a state change which is monitored by the remote client, the server updates the action in a message formatted similarly to a client action message, only with a different code and no sequence number. This message is as if the server requests an action from the client, to be applied on the virtual state of the house maintained internally by the client. The update message is constructed as follows:
 
 \begin{verbatim}
-S > [0x06: 1][device code: 1][device number: 1][action: 1+]
+S > [0x08: 1][device code: 1][device number: 1][action: 1+]
+\end{verbatim}
+
+
+
+\subsubsection{Common Messages}
+\label{sec:pdus:pdu:common}
+
+There are two message types that both the client and the server can invoke. First is a connection shutdown, that can be invoked in order to terminate the communication gracefully. Once sent by any of the sides, any pending actions / updates are disposed and the connection is closed. The termination message is:
+
+\begin{verbatim}
+C|S > [0x09: 1]
 \end{verbatim}
 
 \noindent
-As mentioned in the previous section, the server can also invoke the connection shutdown message.
+The second type of message, is an error message with a common message content -- whenever an illegal message is received from the other end (where illegal means unexpected message at the current state of the protocol). For instance, if a client receives a challenge when it in fact expects a server version, this error is invoked; or when the server receives an action when it awaits a challenge response, this error will also be invoked. The error message in the same format as described before:
+
+\begin{verbatim}
+C|S > [0x02: 1][#err-msg-chars: 1][err-msg: #err-msg-chars]
+\end{verbatim}
+
+\noindent
+After the error message is sent, the connection is terminated.
 
 
 \subsection{Error Control}
