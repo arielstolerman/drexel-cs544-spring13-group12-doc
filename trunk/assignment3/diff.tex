@@ -26,3 +26,7 @@ We applied 2 changes in the DFA:
 \end{enumerate}
 
 In addition, since we eliminated the asynchronous behavior in the main communication phase (where now the client {\em must} receive a confirmation / denial from the server before he can invoke another action) and turned it into synchronous, no longer are the client action messages legal at the ``Client awaits confirm / deny'' state. If the client is at that state, it must wait for the client to send a confirmation / denial to go back to the ``Server awaits client action'' state. It follows that, at the ``Server awaits client action'' state, the server cannot send the client any confirmation / denial (since it cannot have a client pending action to process in that state).
+
+\subsection{Extensibility}
+We added elaboration on the version exchange phase, the heart of the extensibility characteristics of the RSHC protocol. In addition we added a reference to the PDU subsection that discusses the version exchange in detail, as suggested by the professor. The most prevalent addition to the extensibility section is examples on how the protocol can be extended in ways that add new states to the DFA (in the previous version we discussed only adding new messages, but not new states).
+
