@@ -1,0 +1,104 @@
+%%%%%%%%%%%%%%%%
+%%%  config  %%%
+%%%%%%%%%%%%%%%%
+
+\documentclass[12pt]{usenixsubmit}
+\usepackage{setspace}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{array}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{appendix}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{geometry}
+
+%\setstretch{0.9}
+
+\input{config}
+
+%%%%%%%%%%%%%%%%
+%%% document %%%
+%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%% cover %%%
+
+\title{Group 12: Implementation Requirements \\ \Large{CS544 Spring 2013, Drexel University}}
+
+\author{
+    Ryan Corcoran \\
+    ryan.m.corcoran@gmail.com
+    \and
+    Amber Heilman \\
+    alh93@drexel.edu
+    \and
+    Michael Mersic \\
+    mpm76@drexel.edu
+    \and
+    Ariel Stolerman \\
+    ams573@cs.drexel.edu
+}
+\date{}
+
+\maketitle
+
+%%% content %%%
+
+This document specifies the packages and files in the RSHC protocol implementation code base, with indication of which files address which of the following requirements: {\tt STATEFUL}, {\tt CONCURRENT}, {\tt SERVICE}, {\tt CLIENT} and {\tt UI}.
+
+Note that the header of each of the files specifies which of the requirements above are related to that file. If the file is entirely related to the specified requirement(s), no further references to the requirements appear along the file. If specific code segments address a specific requirement, that code segment is preceded with a comment stating the requirement.
+
+\begin{itemize}
+
+\item client
+    \begin{itemize}
+    \item Client.java: {\tt CLIENT}
+    \item ClientComm.java: {\tt CLIENT}, {\tt UI}
+    \item ClientCommCLI.java: {\tt CLIENT}, {\tt UI}
+    \item ClientCommTester.java: {\tt CLIENT}, {\tt UI}
+    \item ClientInputThread.java: {\tt CLIENT}, {\tt UI}
+    \end{itemize}
+
+\item common
+    \begin{itemize}
+    \item Util.java: none (utility methods unrelated to the protocol requirements)
+    \end{itemize}
+    
+\item devices: all files in the devices package are related to the {\tt SERVICE} requirement since they provide implementation and representation of house, devices and actions in the protocol.
+    \begin{itemize}
+    \item Action.java
+    \item AirCon.java
+    \item Alarm.java
+    \item Device.java
+    \item DeviceType.java
+    \item House.java
+    \item HouseFactory.java
+    \item Light.java
+    \item RandomHouseFactory.java
+    \item Shade.java
+    \item TV.java
+    \end{itemize}
+    
+\item protocol
+    \begin{itemize}
+    \item ClientDFA.java: {\tt STATEFUL}, {\tt CLIENT}
+    \item DESAuth.java: {\tt SERVICE}
+    \item DFA.java: {\tt STATEFUL}
+    \item Message.java: {\tt STATEFUL}, {\tt SERVICE}
+    \item ServerDFA.java: {\tt STATEFUL}, {\tt SERVICE}, {\tt CONCURRENT}
+    \end{itemize}
+    
+\item server
+    \begin{itemize}
+    \item ConnectionListener.java: {\tt CONCURRENT}, {\tt UI}
+    \item Server.java: {\tt SERVICE}
+    \item ServerComm.java: {\tt SERVICE}
+    \end{itemize}
+
+\end{itemize}
+
+\end{document}
