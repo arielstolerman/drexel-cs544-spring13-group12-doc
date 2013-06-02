@@ -21,4 +21,5 @@
 \contentsline {subsection}{\numberline {6.2}DFA}{12}{subsection.6.2}
 \contentsline {subsection}{\numberline {6.3}Extensibility}{12}{subsection.6.3}
 \contentsline {subsection}{\numberline {6.4}Security Implications}{12}{subsection.6.4}
-\contentsline {section}{\numberline {A}DFA for the RSHC Protocol}{13}{Appendix.1.A}
+\contentsline {section}{\numberline {7}Performance Implications}{13}{section.7}
+\contentsline {section}{\numberline {A}DFA for the RSHC Protocol}{14}{Appendix.1.A}
