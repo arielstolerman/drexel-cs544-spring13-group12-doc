@@ -1,0 +1,4 @@
+\section{Performance Implications}
+\label{sec:perf}
+
+The RSHC protocol is rather light in terms of performance, since most of its messages are short streams of bytes. The only issue we encountered during implementation and testing, as mentioned in \sect{sec:pdus:pdu:impl}, is using strings rather than streams of bytes for the actual message transfer over the network. We are aware that passing a string, for instance ``00\textbackslash n'', is less efficient than a byte stream 0x00 -- the first is 6 bytes and the later is only one. However, for demonstrative purposes and simplicity of the implementation, we chose to use strings. As mentioned, a better implementation should pass the actual byte streams, and delineation should be then taken care of using the message size encoded in the message itself (or lengths for fixed-length messages like poke or version). Other than that, we encountered no other performance issues that affected our implementation.
