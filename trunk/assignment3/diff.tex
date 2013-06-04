@@ -6,7 +6,7 @@ This section describes the changes applied in this version of the document, comp
 \subsection{PDU Definitions}
 In the second version of the protocol we applied several important changes to the PDUs:
 \begin{enumerate}
-\item {\em All} messages begin with a unique byte that indicates the message type, for instance 0 for a poke message, 1 for a version message, 2 for error etc. In the previous version, most messages had a type, except the version message and the client challenge response message. Back then, the choice was motivated by what is used by a real-world protocol (RFB), however we added a type for {\em all} messages in order to:
+\item {\em All} messages begin with a unique byte that indicates the message type, for instance 0 for a poke message, 1 for a version message, 2 for error etc. In the previous version, most messages had a type, except the version message and the client challenge response message. In the previous version, the choice was motivated by what is used by a real-world protocol (RFB), however we added a type for {\em all} messages in order to:
     \begin{enumerate}
         \item Have a consistent message format
         \item Be able to easily assert whether any given message at any given state is legal at that state or not

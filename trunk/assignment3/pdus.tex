@@ -26,7 +26,7 @@ RSHC communication includes 3 stages:
 
 \item {\em Initialization.} Server sends an {\tt init} message to the client with control information.
 
-\item {\em Normal Protocol Interaction.} Client sends action messages at will, and receives responses from the server. All messages begin with a type (1 byte) followed by message-specific data: client queries or actions and server replies or confirmations.
+\item {\em Normal Protocol Interaction.} Client sends action messages at will, and receives responses from the server. All messages begin with a type (1 byte) followed by message-specific data: client actions and server confirmations/denials (or updates).
 
 \end{enumerate}
 
@@ -63,7 +63,7 @@ All message-type byte-codes, which are always the first byte of any message, are
 \subsubsection{Implementation Notes}
 \label{sec:pdus:pdu:impl}
 
-As will be mentioned in \sect{sec:diff}, originally we aimed to have messages passed as a stream of bytes. Since all messages begin with a type, we immediately know whether it is a message of a fixed length (like type 1, which indicates a version message, that always contains {\em exactly} 12 characters) or a message of a varying length, for which a known position in the message itself should indicate the length of the message (like type 2, error messages where their second byte indicates the length of the following). This approach is designed to well defining message delineation, without using a specific delimiter that indicates the end of the message (as we read bytes, we know how much to expect and keep reading until we cut and look at the buffer thus far as a message).
+As will be mentioned in \sect{sec:diff}, originally we aimed to have messages passed as a stream of bytes. Since all messages begin with a type, we immediately know whether it is a message of a fixed length (like type 1, which indicates a version message, that always contains {\em exactly} 9 characters) or a message of a varying length, for which a known position in the message itself should indicate the length of the message (like type 2, error messages where their second byte indicates the length of the following). This approach is designed to well defining message delineation, without using a specific delimiter that indicates the end of the message (as we read bytes, we know how much to expect and keep reading until we cut and look at the buffer thus far as a message).
 
 During the implementation, we found it much simpler to use a Java-provided buffered reader, that simply reads newline-delimited strings from an input stream. Using this method of message reading simplified the implementation by a lot, since it saved us the effort of having to maintain a buffer, and read byte after byte, calculate the amount of bytes left in the current message from what is read thus far, and cut the messages at the right point.
 
@@ -208,7 +208,7 @@ The server {\tt init} message concludes the handshake part of the RSHC communica
 \subsubsection{Client to Server Messages}
 \label{sec:pdus:pdu:c_to_s}
 
-After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming to the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with the respective error message (as seen in the next section).
+After the connection is initialized, the client can send an action to the house server at any time it pleases, conforming to the state of the house, available devices and their states. It is assumed that the client will handle maintaining information of the state of the house in order to allow only legal messages to be sent. However, should an illegal message be sent by the client, the server is in charge of responding with an action denial message (as seen in the next section).
 
 The client holds a global counter, initialized to 0 and the size of 1 byte, that maintains a cyclic sequence of the actions it sends to the server. This helps maintaining which actions are confirmed and which are erroneous, as the server will reply to each action with the sequence number attached. It is assumed that a byte will suffice, as the client is not able to perform 256 actions prior to any response from the server (which in theory creates a sequence collision). In fact, since the client is allowed to send only one action at a time, and must wait for a server confirmation / denial before the next action is sent, sequence number collision is not possible. However, we adopt the sequence number scheme for good practice, and to support future versions that may allow multiple actions before any confirmation is received back from the server. A client message is constructed as follows:
 
@@ -297,4 +297,4 @@ Later versions of the protocol may extend error handling to be smarter / more fo
 \subsection{Quality of Service}
 \label{sec:pdus:qos}
 
-The RSHCP protocol provides several services to the client to ensure that quality is present through its use. This particular protocol provides a simplicity warranted for future extensibility and version control, allowing backwards compatibility as well. Even further, the use of an authentication mechanism to ensure security of the client connecting to the server during operations is implemented in the initiation stage. Another feature of the protocol sustains the client knowledge of all household device status changes to provide the client with the most current blueprint of the house. These services are defined in detail elsewhere, but are the pillar of service quality in which RSHC is determined to provide.
+The RSHC protocol provides several services to the client to ensure that quality is present through its use. This particular protocol provides a simplicity warranted for future extensibility and version control, allowing backwards compatibility as well. Even further, the use of an authentication mechanism to ensure security of the client connecting to the server during operations is implemented in the initiation stage. Another feature of the protocol sustains the client knowledge of all household device status changes to provide the client with the most current blueprint of the house. These services are defined in detail elsewhere, but are the pillar of service quality in which RSHC is determined to provide.
